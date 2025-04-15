@@ -23,8 +23,10 @@ st.title("PETe - Feedback Analysis Chatbot")
 
 st.markdown("Ask PETe a question about user feedback. For example:")
 st.markdown("- `login issues from Telegram last month`")
+st.markdown("- `account issues at LiveChat in 2024`")
 st.markdown("- `show deposit problems for LiveChat users`")
 st.markdown("- `what about Telegram?`")
+
 
 # User prompt input
 query = st.text_input("Ask your question here:")
