@@ -1,6 +1,31 @@
 # LLM_DataScientist_ChatBot
 Analyze and classify messages from a dataset, then develop a chatbot that can respond to natural language queries with meaningful insights.
 
+# Feedback Analysis Chatbot
+
+An intelligent chatbot for analyzing user feedback with temporal pattern detection and multi-category classification.
+
+## Features
+- Filter feedback by category, source, and time range
+- Detect seasonal patterns and trends
+- Identify spikes in feedback volume
+- Handle queries spanning multiple categories
+- Maintain conversation context for follow-up questions
+
+## Setup
+1. Clone this repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run the web app: `streamlit run app_with_memory.py`
+4. Optional: Enter your OpenAI API key for enhanced query understanding
+
+## Data Format
+The chatbot expects a CSV file with the following columns:
+- id_user: Unique user identifier
+- message: The feedback text
+- category: Feedback category
+- source: Source of the feedback (e.g., LiveChat, Telegram)
+- timestamp: Date and time of the feedback
+
 User Feedback Analysis and Chatbot System
 This repository contains a comprehensive system for analyzing user feedback messages from LiveChat and Telegram, classifying them into actionable categories, and providing a natural language chatbot interface for querying the data.
 
