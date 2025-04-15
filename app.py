@@ -16,10 +16,6 @@ def load_chatbot():
         return None
     return EnhancedFeedbackChatbot(data_path)
 
-# Initialize session state for conversation history if it doesn't exist
-if 'conversation_history' not in st.session_state:
-    st.session_state.conversation_history = []
-
 chatbot = load_chatbot()
 
 # --- Streamlit UI ---
@@ -31,38 +27,18 @@ st.markdown("- `show deposit problems for LiveChat users`")
 st.markdown("- `analyze messages that could belong to multiple categories`")
 st.markdown("- `compare payment issues between Telegram and LiveChat`")
 
-# User prompt input with form submission
-with st.form(key='query_form'):
-    query = st.text_input("Ask your question here:")
-    submit_button = st.form_submit_button("Ask PETe")
+# User prompt input
+query = st.text_input("Ask your question here:")
 
-# Process query on form submission
-if submit_button and query and chatbot:
+# Show response
+if query and chatbot:
     try:
         with st.spinner("Analyzing feedback data..."):
             response = chatbot.process_query(query)
-            
-        # Add to conversation history
-        st.session_state.conversation_history.append({
-            "query": query,
-            "response": response
-        })
-    except Exception as e:
-        st.error(f"Oops! Something went wrong: {e}")
-        st.exception(e)
 
-# Show conversation history (most recent first)
-if st.session_state.conversation_history:
-    for i, exchange in enumerate(reversed(st.session_state.conversation_history)):
-        query = exchange["query"]
-        response = exchange["response"]
-        
-        # Display the user's query in a chat-like format
-        st.markdown(f"**You:** {query}")
-        
-        # Display PETe's response
-        st.success(f"**PETe:** {response['message']}")
-        
+        # Show main chatbot response
+        st.success(response['message'])
+
         # Create columns for metrics
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -77,6 +53,7 @@ if st.session_state.conversation_history:
 
         # Display time charts if available
         if 'charts' in response['data'] and response['data']['charts']:
+            st.subheader("Time Analysis")
             for chart_data in response['data']['charts']:
                 if chart_data['type'] == 'time_series' and hasattr(chart_data['data'], 'index'):
                     fig, ax = plt.subplots(figsize=(10, 4))
@@ -89,62 +66,81 @@ if st.session_state.conversation_history:
         if 'category_overlap' in response['data'] and response['data']['category_overlap']:
             overlap = response['data']['category_overlap']
             
-            with st.expander("Category Overlap Analysis"):
-                st.write(f"{overlap['overlap_percent']:.1f}% of messages could fit in multiple categories")
+            st.subheader("Category Overlap Analysis")
+            st.write(f"{overlap['overlap_percent']:.1f}% of messages could fit in multiple categories")
+            
+            # Create tabs for pairs, examples, and visualization
+            overlap_tab1, overlap_tab2 = st.tabs(["Category Pairs", "Example Messages"])
+            
+            with overlap_tab1:
+                # Show top category pairs
+                if overlap['top_pairs']:
+                    for (cat1, cat2), count in overlap['top_pairs']:
+                        cat1_name = chatbot.category_display_names.get(cat1, cat1.replace('_', ' ').title())
+                        cat2_name = chatbot.category_display_names.get(cat2, cat2.replace('_', ' ').title())
+                        st.write(f"- **{cat1_name}** and **{cat2_name}**: {count} messages")
                 
-                # Create tabs for pairs, examples, and visualization
-                overlap_tab1, overlap_tab2 = st.tabs(["Category Pairs", "Example Messages"])
+                # Create and display visualization
+                if len(overlap['top_pairs']) >= 2:
+                    st.subheader("Category Overlap Heatmap")
+                    fig = chatbot.create_category_overlap_visualization(
+                        chatbot.conversation_memory['last_filtered_df']
+                    )
+                    if fig:
+                        st.pyplot(fig)
+            
+            with overlap_tab2:
+                # Show example messages
+                for i, example in enumerate(overlap['sample_overlaps'][:5]):
+                    with st.expander(f"Example {i+1}: {example['message'][:50]}..." if len(example['message']) > 50 else example['message']):
+                        st.write(f"**Primary category:** {example['primary_category_name']}")
+                        
+                        # Show potential categories with confidence scores
+                        st.write("**Could also fit in:**")
+                        for category, score in example['potential_categories']:
+                            cat_name = chatbot.category_display_names.get(category, category.replace('_', ' ').title())
+                            st.write(f"- {cat_name} ({score:.0f}% confidence)")
+
+        # Show detailed stats
+        with st.expander("📊 Detailed Statistics"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"- **Total Messages Found:** {response['data']['count']}")
+                st.markdown(f"- **Unique Users:** {response['data']['unique_users']}")
                 
-                with overlap_tab1:
-                    # Show top category pairs
-                    if overlap['top_pairs']:
-                        for (cat1, cat2), count in overlap['top_pairs']:
-                            cat1_name = chatbot.category_display_names.get(cat1, cat1.replace('_', ' ').title())
-                            cat2_name = chatbot.category_display_names.get(cat2, cat2.replace('_', ' ').title())
-                            st.write(f"- **{cat1_name}** and **{cat2_name}**: {count} messages")
-                    
-                    # Create and display visualization
-                    if len(overlap['top_pairs']) >= 2:
-                        st.subheader("Category Overlap Heatmap")
-                        fig = chatbot.create_category_overlap_visualization(
-                            chatbot.conversation_memory['last_filtered_df']
-                        )
-                        if fig:
-                            st.pyplot(fig)
-                
-                with overlap_tab2:
-                    # Show example messages
-                    for i, example in enumerate(overlap['sample_overlaps'][:5]):
-                        with st.expander(f"Example {i+1}: {example['message'][:50]}..." if len(example['message']) > 50 else example['message']):
-                            st.write(f"**Primary category:** {example['primary_category_name']}")
-                            
-                            # Show potential categories with confidence scores
-                            st.write("**Could also fit in:**")
-                            for category, score in example['potential_categories']:
-                                cat_name = chatbot.category_display_names.get(category, category.replace('_', ' ').title())
-                                st.write(f"- {cat_name} ({score:.0f}% confidence)")
+                if 'multi_category' in response['data'] and response['data']['multi_category']:
+                    st.markdown("#### Category Distribution:")
+                    for result in response['data']['category_results']:
+                        st.markdown(f"- **{result['category_name']}**: {result['count']} messages ({result['count']/response['data']['count']*100:.1f}%)")
+            
+            with col2:
+                # Show temporal insights if available
+                if 'temporal_insights' in response['data']:
+                    st.markdown("#### Temporal Insights:")
+                    for insight in response['data']['temporal_insights']:
+                        st.markdown(f"- {insight}")
+                        
+                # Show user engagement stats if available
+                if response['data']['unique_users'] > 0:
+                    avg_msgs_per_user = response['data']['count'] / response['data']['unique_users']
+                    st.markdown(f"#### User Engagement:")
+                    st.markdown(f"- **Avg. Messages per User:** {avg_msgs_per_user:.2f}")
 
         # Show sample messages if available
         if chatbot.conversation_memory['last_filtered_df'] is not None and len(chatbot.conversation_memory['last_filtered_df']) > 0:
-            with st.expander("Sample Messages"):
-                sample_df = chatbot.conversation_memory['last_filtered_df'].sample(min(5, len(chatbot.conversation_memory['last_filtered_df'])))
-                if 'message' in sample_df.columns:
-                    display_df = sample_df[['timestamp', 'message', 'category']].copy()
-                    display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
-                    display_df['category'] = display_df['category'].apply(
-                        lambda x: chatbot.category_display_names.get(x, x.replace('_', ' ').title())
-                    )
-                    st.dataframe(display_df, use_container_width=True)
-        
-        # Add a divider between conversations
-        if i < len(st.session_state.conversation_history) - 1:
-            st.markdown("---")
+            st.subheader("Sample Messages")
+            sample_df = chatbot.conversation_memory['last_filtered_df'].sample(min(5, len(chatbot.conversation_memory['last_filtered_df'])))
+            if 'message' in sample_df.columns:
+                display_df = sample_df[['timestamp', 'message', 'category']].copy()
+                display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
+                display_df['category'] = display_df['category'].apply(
+                    lambda x: chatbot.category_display_names.get(x, x.replace('_', ' ').title())
+                )
+                st.dataframe(display_df, use_container_width=True)
 
-# Add a button to clear conversation history
-if st.session_state.conversation_history:
-    if st.button("Clear Conversation History"):
-        st.session_state.conversation_history = []
-        st.experimental_rerun()
-
+    except Exception as e:
+        st.error(f"Oops! Something went wrong: {e}")
+        st.exception(e)  # This will display the full traceback in development
 elif query and not chatbot:
     st.error("Chatbot could not be loaded. Please check the dataset path.")
