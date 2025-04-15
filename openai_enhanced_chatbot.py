@@ -213,7 +213,7 @@ class EnhancedFeedbackChatbot:
     def _parse_time_range(self, query):
         """
         Extract time range from the query text
-        Enhanced to better handle month-year combinations and ensure correct execution
+        Now with support for specific month-year combinations
 
         Args:
             query (str): The user's query text
@@ -244,9 +244,9 @@ class EnhancedFeedbackChatbot:
             # Month with year (e.g., "January 2024" or "Jan 2024")
             (r'(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\s+(\d{4})',
             lambda x: (
-                datetime(int(x.group(2)), month_names[x.group(1).lower()], 1),
-                datetime(int(x.group(2)), month_names[x.group(1).lower()],
-                        self._get_last_day_of_month(int(x.group(2)), month_names[x.group(1).lower()]))
+                datetime(int(x.group(2)), month_names[x.group(1)], 1),
+                datetime(int(x.group(2)), month_names[x.group(1)],
+                          self._get_last_day_of_month(int(x.group(2)), month_names[x.group(1)]))
             )),
 
             # Year only (e.g., "2024")
@@ -297,11 +297,7 @@ class EnhancedFeedbackChatbot:
             match = re.search(pattern, query)
             if match:
                 try:
-                    # For debugging (remove in production)
-                    print(f"Found time match: {match.group(0)}")
-                    result = time_func(match)
-                    print(f"Parsed time range: {result[0]} to {result[1]}")
-                    return result
+                    return time_func(match)
                 except Exception as e:
                     print(f"Error parsing time range: {e}")
 
@@ -415,74 +411,8 @@ class EnhancedFeedbackChatbot:
         if any(phrase in query.lower() for phrase in ['compare', 'versus', 'vs', 'difference between']):
             return self.process_comparison_query(query)
         
-        # In the process_query method
-        if "overlap" in query.lower() or "multiple categories" in query.lower():
-            # Apply filters as usual
-            filtered_df = self.df.copy()
-            
-            # Apply category filter if specified
-            if category:
-                filtered_df = filtered_df[filtered_df['category'] == category]
-            
-            # Apply source filter if specified
-            if source:
-                filtered_df = filtered_df[filtered_df['source'] == source]
-            
-            # Apply time range filter if specified
-            if time_range:
-                start_time, end_time = time_range
-                filtered_df = filtered_df[
-                    (filtered_df['timestamp'] >= start_time) &
-                    (filtered_df['timestamp'] <= end_time)
-                ]
-            
-            # Perform in-depth overlap analysis
-            overlap_analysis = self.analyze_category_overlap(filtered_df)
-            
-            # Create detailed message
-            if not overlap_analysis:
-                return {
-                    'message': "I couldn't find enough data to analyze category overlap.",
-                    'data': {'count': len(filtered_df), 'unique_users': filtered_df['id_user'].nunique()}
-                }
-            
-            # Create detailed message about overlap
-            message_parts = [
-                f"I analyzed {len(filtered_df)} messages for potential category overlap.",
-                f"About {overlap_analysis['overlap_percent']:.1f}% of messages could belong to multiple categories."
-            ]
-            
-            # Add top pairs
-            if overlap_analysis['top_pairs']:
-                message_parts.append("\nTop category overlaps:")
-                for (cat1, cat2), count in overlap_analysis['top_pairs']:
-                    cat1_name = self.category_display_names.get(cat1, cat1.replace('_', ' ').title())
-                    cat2_name = self.category_display_names.get(cat2, cat2.replace('_', ' ').title())
-                    message_parts.append(f"- {cat1_name} and {cat2_name}: {count} messages")
-            
-            # Add examples
-            if overlap_analysis['sample_overlaps']:
-                message_parts.append("\nHere are some example messages that could fit multiple categories:")
-                for i, example in enumerate(overlap_analysis['sample_overlaps'][:5]):
-                    if i > 0:
-                        message_parts.append("")  # Add space between examples
-                    
-                    primary = example['primary_category_name']
-                    secondary_cats = [f"{self.category_display_names.get(cat, cat.replace('_', ' ').title())} ({score:.0f}%)" 
-                                    for cat, score in example['potential_categories'][:3]]
-                    
-                    message_parts.append(f"Message: \"{example['message']}\"")
-                    message_parts.append(f"Primary category: {primary}")
-                    message_parts.append(f"Could also fit in: {', '.join(secondary_cats)}")
-            
-            return {
-                'message': "\n".join(message_parts),
-                'data': {
-                    'count': len(filtered_df),
-                    'unique_users': filtered_df['id_user'].nunique(),
-                    'category_overlap': overlap_analysis
-                }
-            }
+        # For normal queries that might involve multiple categories
+        return self.process_query_with_multiple_categories(query)
 
     def _is_follow_up_query(self, query):
         """
@@ -505,7 +435,7 @@ class EnhancedFeedbackChatbot:
 
     def process_query_with_multiple_categories(self, query):
         """
-        Enhanced process for handling queries that may involve multiple categories
+        Process a query that may involve multiple categories
         
         Args:
             query (str): The user's query text
@@ -689,26 +619,13 @@ class EnhancedFeedbackChatbot:
                             category, category.replace('_', ' ').title()
                         )
                         
-                        # Check for seasonality and trends in this category
-                        seasonal_insights = []
-                        trend_insights = []
-                        
-                        # Only run these analyses if we have enough data
-                        if len(category_df) >= 30:
-                            seasonal_insights = self.detect_seasonal_patterns(category_df)
-                        
-                        if len(category_df) >= 21:
-                            trend_insights = self.detect_trends(category_df, window=7)
-                        
                         # Add to results
                         multi_category_results.append({
                             'category': category,
                             'category_name': category_name,
                             'confidence': confidence,
                             'count': message_count,
-                            'unique_users': unique_users,
-                            'seasonal_insights': seasonal_insights,
-                            'trend_insights': trend_insights
+                            'unique_users': unique_users
                         })
             
             # Generate combined response
@@ -734,112 +651,141 @@ class EnhancedFeedbackChatbot:
                         time_desc = f"between {start_time.strftime('%Y-%m-%d')} and {end_time.strftime('%Y-%m-%d')}"
                         filter_desc.append(time_desc)
                     
-                    if filter_desc:
-                        message_parts.append(f"I found messages {' '.join(filter_desc)} across multiple categories:")
-                    else:
-                        message_parts.append("I found messages across multiple categories:")
+                    message_parts.append(f"I found messages {' '.join(filter_desc)} across multiple categories:")
+                else:
+                    message_parts.append("I found messages across multiple categories:")
+                
+                # Add category breakdowns
+                for result in multi_category_results:
+                    message_parts.append(
+                        f"- {result['category_name']}: {result['count']} messages from {result['unique_users']} users "
+                        f"(confidence: {result['confidence']:.0f}%)"
+                    )
+                
+                # Set primary filtered DataFrame for additional analysis
+                self.conversation_memory['last_filtered_df'] = primary_category_df
+                
+                # Create charts based on the primary category
+                charts = []
+                if primary_category_df is not None and len(primary_category_df) >= 5:
+                    # Create time series chart
+                    primary_category_df['date'] = primary_category_df['timestamp'].dt.date
+                    daily_counts = primary_category_df.groupby('date').size()
                     
-                    # Add category breakdowns with confidence scores
-                    for result in multi_category_results:
-                        confidence_indicator = ""
-                        if result['confidence'] >= 80:
-                            confidence_indicator = "(high confidence)"
-                        elif result['confidence'] >= 60:
-                            confidence_indicator = "(medium confidence)"
-                        else:
-                            confidence_indicator = "(low confidence)"
-                            
-                        message_parts.append(
-                            f"- {result['category_name']}: {result['count']} messages from {result['unique_users']} users {confidence_indicator}"
-                        )
-                    
-                    # Set primary filtered DataFrame for additional analysis
-                    self.conversation_memory['last_filtered_df'] = primary_category_df
-                    
-                    # Create charts based on the primary category
-                    charts = []
-                    if primary_category_df is not None and len(primary_category_df) >= 5:
-                        # Create time series chart
-                        primary_category_df['date'] = primary_category_df['timestamp'].dt.date
-                        daily_counts = primary_category_df.groupby('date').size()
-                        
-                        # Check for spikes
-                        if len(daily_counts) > 3:
-                            mean = daily_counts.mean()
-                            std = daily_counts.std()
-                            threshold = mean + 1.5 * std
+                    # Check for spikes
+                    if len(daily_counts) > 3:
+                        mean = daily_counts.mean()
+                        std = daily_counts.std()
+                        threshold = mean + 1.5 * std
 
-                            spikes = daily_counts[daily_counts > threshold]
-                            if not spikes.empty:
-                                if len(spikes) == 1:
-                                    spike_date = spikes.index[0]
-                                    message_parts.append(f"I noticed a significant spike in {multi_category_results[0]['category_name']} on {spike_date}.")
-                                else:
-                                    spike_dates = ", ".join([str(date) for date in spikes.index])
-                                    message_parts.append(f"I noticed significant spikes in {multi_category_results[0]['category_name']} on these dates: {spike_dates}.")
-                        
-                        # Add the time series chart
-                        charts.append({
-                            'type': 'time_series',
-                            'data': daily_counts,
-                            'category': multi_category_results[0]['category_name']
-                        })
-                        
-                    # Add insights for each category
-                    insight_messages = []
+                        spikes = daily_counts[daily_counts > threshold]
+                        if not spikes.empty:
+                            if len(spikes) == 1:
+                                spike_date = spikes.index[0]
+                                message_parts.append(f"I noticed a significant spike in {multi_category_results[0]['category_name']} on {spike_date}.")
+                            else:
+                                spike_dates = ", ".join([str(date) for date in spikes.index])
+                                message_parts.append(f"I noticed significant spikes in {multi_category_results[0]['category_name']} on these dates: {spike_dates}.")
                     
-                    for result in multi_category_results[:2]:  # Focus on top 2 categories for detailed insights
-                        category_insights = []
-                        
-                        # Add seasonal insights if available
-                        if result['seasonal_insights']:
-                            category_insights.extend(result['seasonal_insights'])
-                            
-                        # Add trend insights if available
-                        if result['trend_insights']:
-                            category_insights.extend(result['trend_insights'])
-                        
-                        # Only add insights section if we have insights
-                        if category_insights:
-                            insight_messages.append(f"\nFor {result['category_name']}:")
-                            for insight in category_insights:
-                                insight_messages.append(f"- {insight}")
+                    # Add the time series chart
+                    charts.append({
+                        'type': 'time_series',
+                        'data': daily_counts,
+                        'category': multi_category_results[0]['category_name']
+                    })
                     
-                    # Add all insights to the message
-                    if insight_messages:
-                        message_parts.append("\nI noticed these patterns over time:")
-                        message_parts.extend(insight_messages)
+                    # Add enhanced temporal analysis if we have enough data
+                    temporal_insights = []
                     
-                    # Add suggestions for exploring categories
-                    category_suggestions = []
-                    if len(multi_category_results) > 1:
-                        message_parts.append("\nYou might want to explore these categories in more detail:")
-                        for result in multi_category_results[:2]:  # Top 2 categories
-                            suggestion = f"Tell me more about {result['category_name']}"
-                            if source:
-                                suggestion += f" from {source}"
-                            if time_range:
-                                start_time, end_time = time_range
-                                suggestion += f" between {start_time.strftime('%Y-%m-%d')} and {end_time.strftime('%Y-%m-%d')}"
-                            category_suggestions.append(suggestion)
-                            message_parts.append(f"- {suggestion}")
+                    # Check for seasonal patterns
+                    if len(primary_category_df) >= 30:  # At least 30 data points
+                        seasonal_patterns = self.detect_seasonal_patterns(primary_category_df)
+                        temporal_insights.extend(seasonal_patterns)
                     
-                    return {
-                        'message': "\n".join(message_parts),
-                        'data': {
-                            'count': sum(result['count'] for result in multi_category_results),
-                            'unique_users': len(set().union(*(
-                                set(filtered_base_df[filtered_base_df['category'] == result['category']]['id_user'].unique())
-                                for result in multi_category_results
-                            ))),
-                            'charts': charts,
-                            'multi_category': True,
-                            'category_results': multi_category_results,
-                            'category_suggestions': category_suggestions
-                        }
+                    # Check for trends
+                    if len(primary_category_df) >= 21:  # Enough for a 7-day window
+                        trend_insights = self.detect_trends(primary_category_df, window=7)
+                        temporal_insights.extend(trend_insights)
+                    
+                    # Year-over-year comparison if sufficient data
+                    if primary_category_df['timestamp'].max() - primary_category_df['timestamp'].min() >= pd.Timedelta(days=365):
+                        yoy_insights = self.compare_year_over_year(primary_category_df, multi_category_results[0]['category'])
+                        temporal_insights.extend(yoy_insights)
+                    
+                    # Add temporal insights to message
+                    if temporal_insights:
+                        message_parts.append(f"\nI noticed these patterns over time for {multi_category_results[0]['category_name']}:")
+                        for insight in temporal_insights:
+                            message_parts.append(f"- {insight}")
+                
+                # Add suggestions for exploring categories
+                category_suggestions = []
+                if len(multi_category_results) > 1:
+                    message_parts.append("\nYou might want to explore these categories in more detail:")
+                    for result in multi_category_results[:2]:  # Top 2 categories
+                        suggestion = f"Tell me more about {result['category_name']}"
+                        if source:
+                            suggestion += f" from {source}"
+                        if time_range:
+                            start_time, end_time = time_range
+                            suggestion += f" between {start_time.strftime('%Y-%m-%d')} and {end_time.strftime('%Y-%m-%d')}"
+                        category_suggestions.append(suggestion)
+                        message_parts.append(f"- {suggestion}")
+                
+                return {
+                    'message': "\n".join(message_parts),
+                    'data': {
+                        'count': sum(result['count'] for result in multi_category_results),
+                        'unique_users': len(set().union(*(
+                            set(filtered_base_df[filtered_base_df['category'] == result['category']]['id_user'].unique())
+                            for result in multi_category_results
+                        ))),
+                        'charts': charts,
+                        'multi_category': True,
+                        'category_results': multi_category_results,
+                        'category_suggestions': category_suggestions
                     }
-            
+                }
         
+        # If we reach here, it means we have a single category or no categories
+        # Apply filters to the data based on current context
+        filtered_df = self.df.copy()
+
+        # Apply category filter
+        if self.conversation_memory['current_context']['category']:
+            filtered_df = filtered_df[filtered_df['category'] == self.conversation_memory['current_context']['category']]
+
+        # Apply source filter
+        if self.conversation_memory['current_context']['source']:
+            filtered_df = filtered_df[filtered_df['source'] == self.conversation_memory['current_context']['source']]
+
+        # Apply time range filter
+        if self.conversation_memory['current_context']['time_range']:
+            start_time, end_time = self.conversation_memory['current_context']['time_range']
+            filtered_df = filtered_df[
+                (filtered_df['timestamp'] >= start_time) &
+                (filtered_df['timestamp'] <= end_time)
+            ]
+
+        # Store the filtered dataframe
+        self.conversation_memory['last_filtered_df'] = filtered_df
+
+        # Generate response
+        response = self._generate_response(
+            filtered_df,
+            self.conversation_memory['current_context']['category'],
+            self.conversation_memory['current_context']['source'],
+            self.conversation_memory['current_context']['time_range'],
+            query_intent
+        )
+
+        # Add response to conversation history
+        self.conversation_memory['messages'].append({
+            'role': 'assistant',
+            'content': response['message']
+        })
+
+        return response
 
     def suggest_category_exploration(self, query_results):
         """
@@ -1068,7 +1014,7 @@ class EnhancedFeedbackChatbot:
 
     def _extract_categories_with_confidence(self, query, message_sample=None):
         """
-        Enhanced method to extract multiple potential categories with confidence scores
+        Extract multiple potential categories with confidence scores
         
         Args:
             query (str): The user's query text
@@ -1080,7 +1026,7 @@ class EnhancedFeedbackChatbot:
         query_lower = query.lower()
         categories_scores = []
         
-        # Method 1: Improved keyword matching with weighted scores
+        # Method 1: Keyword matching with weighted scores
         for key, category in self.category_mappings.items():
             # Check for exact matches (full words)
             pattern = r'\b' + re.escape(key) + r'\b'
@@ -1092,36 +1038,77 @@ class EnhancedFeedbackChatbot:
                 for match in matches:
                     position_factor = 1.0 - (query_lower.find(match) / len(query_lower)) * 0.5
                     length_factor = min(1.0, len(match) / 10)  # Cap at 1.0
-                    specificity_factor = 0.3  # Additional factor for specific category terms
-                    
-                    # Check if this is a more specific category (like "bonus_activation" vs just "bonus")
-                    if "_" in category:
-                        specificity_factor = 0.6  # Higher confidence for specific subcategories
-                    
-                    confidence = (0.6 + (position_factor * 0.2) + (length_factor * 0.2) + specificity_factor) * 100
-                    # Cap confidence at 100
-                    confidence = min(confidence, 100)
+                    confidence = (0.6 + (position_factor * 0.2) + (length_factor * 0.2)) * 100
                     categories_scores.append((category, confidence))
         
-        # Method 2: Context-based similarity using previous messages
+        # Method 2: If using OpenAI (more sophisticated approach)
+        if self.use_openai and message_sample is not None and len(message_sample) > 0:
+            try:
+                # Create a prompt with message samples and the user query
+                system_prompt = """
+                You are an expert at categorizing user feedback for a gaming platform.
+                Based on the sample messages and the user's query, rank the potential categories with confidence scores.
+                Available categories:
+                - account_access: Issues with login, passwords, verification
+                - payment_issues: Problems with deposits, withdrawals, transactions
+                - game_problems: Issues with gameplay, slots, betting
+                - bonus_issues_general: General bonus and promotion issues
+                - bonus_activation: Problems activating bonuses or using promo codes
+                - bonus_missing: Missing or not credited bonuses
+                - bonus_eligibility: Questions about bonus qualification
+                - freespins_issues: Problems with free spins features
+                - technical_errors: Website, app, or technical issues
+                - general_inquiry: General questions and information requests
+                
+                Respond with a JSON object containing category names and confidence scores (0-100).
+                Example: {"payment_issues": 85, "bonus_missing": 60}
+                """
+                
+                # Format sample messages for context
+                message_examples = "\n".join([
+                    f"Category: {row['category']}, Message: {row['message']}"
+                    for _, row in message_sample.sample(min(5, len(message_sample))).iterrows()
+                ])
+                
+                user_prompt = f"""
+                Sample messages from our system:
+                {message_examples}
+                
+                User query to categorize: "{query}"
+                
+                Which categories apply to this query? Rank them with confidence scores.
+                """
+                
+                conversation = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+                
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=conversation,
+                    temperature=0.1
+                )
+                
+                result = response.choices[0].message.content
+                
+                # Parse JSON response
+                import json
+                ai_categories = json.loads(result)
+                
+                # Add AI-suggested categories to our list
+                for category, confidence in ai_categories.items():
+                    categories_scores.append((category, float(confidence)))
+            
+            except Exception as e:
+                print(f"Error using OpenAI for multi-category detection: {e}")
+        
+        # Method 3: Use TF-IDF similarity if we don't have OpenAI
         if not self.use_openai and message_sample is not None and len(message_sample) > 0:
             try:
                 from sklearn.feature_extraction.text import TfidfVectorizer
                 from sklearn.metrics.pairwise import cosine_similarity
                 import numpy as np
-                
-                # Get recent conversation history
-                recent_queries = []
-                if len(self.conversation_memory['messages']) > 0:
-                    recent_queries = [
-                        msg['content'] for msg in self.conversation_memory['messages'][-5:]
-                        if msg['role'] == 'user'
-                    ]
-                
-                # Combine current query with recent conversation for context
-                context_query = query
-                if recent_queries:
-                    context_query = " ".join(recent_queries) + " " + query
                 
                 # Group sample messages by category
                 category_messages = {}
@@ -1133,7 +1120,7 @@ class EnhancedFeedbackChatbot:
                 if category_messages:
                     # Create corpus with user query at the end
                     corpus = list(category_messages.values())
-                    corpus.append(context_query)
+                    corpus.append(query)
                     
                     # Calculate TF-IDF and similarities
                     vectorizer = TfidfVectorizer(stop_words='english')
@@ -1152,40 +1139,6 @@ class EnhancedFeedbackChatbot:
             
             except Exception as e:
                 print(f"Error using TF-IDF for multi-category detection: {e}")
-        
-        # Method 3: Semantic similarity with pre-defined category descriptions
-        try:
-            # Define category descriptions for better matching
-            category_descriptions = {
-                'account_access': 'issues with logging in, account access, verification, password problems, security',
-                'payment_issues': 'problems with payments, deposits, withdrawals, transactions, money transfers, refunds',
-                'game_problems': 'issues with games, slots, betting, gameplay, game crashes, game rules',
-                'bonus_issues_general': 'general problems with bonuses, promotions, offers, reward points',
-                'bonus_activation': 'problems activating bonuses, using bonus codes, redeeming offers',
-                'bonus_missing': 'missing bonuses, bonuses not credited, bonus disappearing, not receiving promised bonus',
-                'bonus_eligibility': 'eligibility for bonuses, qualification issues, bonus requirements',
-                'freespins_issues': 'problems with free spins, free games, promotional spins, free bet offers',
-                'technical_errors': 'technical problems, website errors, app crashes, connection issues, bugs, glitches'
-            }
-            
-            # For each category, calculate a simple word overlap score
-            for category, description in category_descriptions.items():
-                # Convert to sets of words for overlap calculation
-                query_words = set(query_lower.split())
-                desc_words = set(description.split())
-                
-                # Calculate overlap
-                overlap = query_words.intersection(desc_words)
-                
-                if overlap:
-                    # Score based on percentage of query words that match the description
-                    # and weighted by the specificity of the match
-                    overlap_score = len(overlap) / len(query_words) * 100
-                    if overlap_score > 20:  # Minimum threshold
-                        categories_scores.append((category, overlap_score))
-        
-        except Exception as e:
-            print(f"Error in semantic matching: {e}")
         
         # Aggregate and normalize confidence scores
         aggregated_scores = {}
@@ -1206,145 +1159,8 @@ class EnhancedFeedbackChatbot:
         # Filter to categories with minimum confidence
         filtered_categories = [(cat, score) for cat, score in sorted_categories if score >= 30]
         
-        # If we find nothing but have a previous category, suggest it with lower confidence
-        if not filtered_categories and self.conversation_memory['current_context'].get('category'):
-            previous_category = self.conversation_memory['current_context']['category']
-            filtered_categories = [(previous_category, 40)]  # Add with moderate confidence
-        
         return filtered_categories
 
-    def analyze_category_overlap(self, filtered_df):
-        """
-        Analyze how messages might fall into multiple categories
-        
-        Args:
-            filtered_df (DataFrame): Filtered dataframe of messages
-            
-        Returns:
-            dict: Category overlap statistics and examples
-        """
-        if filtered_df.empty or len(filtered_df) < 10:
-            return None
-            
-        # Sample messages for analysis (limit to reasonable size)
-        sample_size = min(300, len(filtered_df))
-        message_sample = filtered_df.sample(sample_size)
-        
-        # Store category overlaps
-        category_overlaps = []
-        
-        # For each message, check which categories it might belong to
-        for idx, row in message_sample.iterrows():
-            message = row['message'].lower()
-            primary_category = row['category']
-            
-            # Find all potential categories for this message
-            potential_categories = []
-            for category in self.categories:
-                if category == primary_category:
-                    continue  # Skip the actual category
-                    
-                # Calculate match score with this category
-                score = self._calculate_category_match_score(message, category)
-                if score >= 40:  # Only include reasonable matches
-                    potential_categories.append((category, score))
-            
-            # If we found additional potential categories
-            if potential_categories:
-                category_overlaps.append({
-                    'message': row['message'],
-                    'primary_category': primary_category,
-                    'primary_category_name': self.category_display_names.get(
-                        primary_category, primary_category.replace('_', ' ').title()
-                    ),
-                    'potential_categories': potential_categories
-                })
-        
-        # Calculate overall statistics
-        overlap_stats = {}
-        if category_overlaps:
-            # Count messages with potential category overlap
-            overlap_count = len(category_overlaps)
-            overlap_percent = (overlap_count / sample_size) * 100
-            
-            # Count category co-occurrences
-            category_pairs = {}
-            for overlap in category_overlaps:
-                primary = overlap['primary_category']
-                for secondary, _ in overlap['potential_categories']:
-                    pair = tuple(sorted([primary, secondary]))
-                    category_pairs[pair] = category_pairs.get(pair, 0) + 1
-            
-            # Find top category pairs
-            top_pairs = sorted(category_pairs.items(), key=lambda x: x[1], reverse=True)[:5]
-            
-            # Find examples for each top pair (up to 2 examples per pair)
-            pair_examples = {}
-            for (cat1, cat2), _ in top_pairs:
-                examples = []
-                for overlap in category_overlaps:
-                    primary = overlap['primary_category']
-                    secondary_cats = [c for c, _ in overlap['potential_categories']]
-                    
-                    if (primary == cat1 and cat2 in secondary_cats) or (primary == cat2 and cat1 in secondary_cats):
-                        examples.append(overlap['message'])
-                        if len(examples) >= 2:  # Limit to 2 examples
-                            break
-                
-                if examples:
-                    pair_examples[(cat1, cat2)] = examples
-            
-            # Compile stats
-            overlap_stats = {
-                'overlap_count': overlap_count,
-                'overlap_percent': overlap_percent,
-                'top_pairs': top_pairs,
-                'pair_examples': pair_examples,
-                'sample_overlaps': category_overlaps[:10]  # Limit to 10 example messages
-            }
-        
-        return overlap_stats
-
-    def _calculate_category_match_score(self, message, category):
-        """
-        Calculate how well a message matches a specific category
-        
-        Args:
-            message (str): The message text
-            category (str): The category to match against
-            
-        Returns:
-            float: Match score (0-100)
-        """
-        score = 0
-        
-        # 1. Check for category keywords
-        for key, cat in self.category_mappings.items():
-            if cat == category and key in message:
-                # More specific matches get higher scores
-                score += 30 if len(key.split()) > 1 else 20
-        
-        # 2. Use category descriptions for semantic matching
-        category_descriptions = {
-            'account_access': ['login', 'password', 'access', 'account', 'verification', 'security'],
-            'payment_issues': ['payment', 'deposit', 'withdraw', 'transaction', 'money', 'refund'],
-            'game_problems': ['game', 'play', 'slot', 'bet', 'spin', 'crash'],
-            'bonus_issues_general': ['bonus', 'promo', 'promotion', 'offer', 'reward'],
-            'bonus_activation': ['activate', 'code', 'redeem', 'claim', 'apply'],
-            'bonus_missing': ['missing', 'disappeared', 'not credited', 'didn\'t receive', 'lost'],
-            'bonus_eligibility': ['eligible', 'qualify', 'criteria', 'requirement', 'term'],
-            'freespins_issues': ['free spin', 'freespin', 'free game', 'spin', 'free round'],
-            'technical_errors': ['error', 'bug', 'technical', 'crash', 'website', 'app', 'connection']
-        }
-        
-        if category in category_descriptions:
-            keywords = category_descriptions[category]
-            for keyword in keywords:
-                if keyword in message:
-                    score += 15
-        
-        # 3. Apply caps
-        return min(score, 100)
     
 
     def _generate_response(self, filtered_df, category, source, time_range, query_intent=None):
@@ -1517,382 +1333,79 @@ class EnhancedFeedbackChatbot:
                         spike_dates = ", ".join([str(date) for date in spikes.index])
                         message_parts.append(f"I noticed significant spikes on these dates: {spike_dates}.")
 
-        category_overlap = None
-        if len(filtered_df) >= 10:
-            category_overlap = self.analyze_category_overlap(filtered_df)
-            
-            if category_overlap and category_overlap['overlap_percent'] > 15:
-                message_parts.append("\nI noticed some messages could belong to multiple categories:")
-                
-                # Add overview of category overlap
-                message_parts.append(f"- {category_overlap['overlap_percent']:.1f}% of messages could potentially fit in multiple categories")
-                
-                # Add top category pairs
-                if category_overlap['top_pairs']:
-                    message_parts.append("Most common category overlaps:")
-                    for (cat1, cat2), count in category_overlap['top_pairs'][:3]:
-                        cat1_name = self.category_display_names.get(cat1, cat1.replace('_', ' ').title())
-                        cat2_name = self.category_display_names.get(cat2, cat2.replace('_', ' ').title())
-                        message_parts.append(f"- {cat1_name} and {cat2_name}: {count} messages")
-        
+            # Create time series chart
+            charts.append({
+                'type': 'time_series',
+                'data': daily_counts
+            })
+
         # Create final response
         response = {
             'message': " ".join(message_parts),
             'data': {
                 'count': message_count,
                 'unique_users': unique_users,
-                'charts': charts,
-                'category_overlap': category_overlap  # Add overlap data
+                'charts': charts
             }
         }
 
         return response
     
-    
-    def create_category_overlap_visualization(self, filtered_df):
-        """
-        Create a visualization of category overlap
-        
-        Args:
-            filtered_df (DataFrame): Filtered dataframe
-            
-        Returns:
-            matplotlib.figure.Figure: Visualization of category overlap
-        """
-        import matplotlib.pyplot as plt
-        import numpy as np
-        
-        # Analyze category overlap
-        overlap_data = self.analyze_category_overlap(filtered_df)
-        if not overlap_data or not overlap_data['top_pairs']:
-            return None
-        
-        # Create a co-occurrence matrix
-        categories = list(set([cat for pair, _ in overlap_data['top_pairs'] for cat in pair]))
-        n_categories = len(categories)
-        cat_indices = {cat: i for i, cat in enumerate(categories)}
-        
-        # Initialize matrix
-        matrix = np.zeros((n_categories, n_categories))
-        
-        # Fill matrix with pair counts
-        for (cat1, cat2), count in overlap_data['top_pairs']:
-            i, j = cat_indices[cat1], cat_indices[cat2]
-            matrix[i, j] = count
-            matrix[j, i] = count  # Mirror
-        
-        # Create plot
-        fig, ax = plt.subplots(figsize=(10, 8))
-        
-        # Convert category codes to readable names
-        readable_categories = [self.category_display_names.get(cat, cat.replace('_', ' ').title()) 
-                              for cat in categories]
-        
-        # Create heatmap
-        im = ax.imshow(matrix, cmap='viridis')
-        
-        # Add category labels
-        ax.set_xticks(np.arange(n_categories))
-        ax.set_yticks(np.arange(n_categories))
-        ax.set_xticklabels(readable_categories, rotation=45, ha='right')
-        ax.set_yticklabels(readable_categories)
-        
-        # Add values to cells
-        for i in range(n_categories):
-            for j in range(n_categories):
-                if matrix[i, j] > 0:
-                    ax.text(j, i, int(matrix[i, j]), ha='center', va='center', 
-                          color='white' if matrix[i, j] > matrix.max()/2 else 'black')
-        
-        # Add title and colorbar
-        ax.set_title('Category Overlap Heatmap')
-        plt.colorbar(im, ax=ax, label='Number of messages with overlap')
-        
-        plt.tight_layout()
-        return fig
-
     def detect_seasonal_patterns(self, filtered_df):
         """
-        Detect seasonal patterns in user feedback with enhanced detection
-        
-        Args:
-            filtered_df (DataFrame): Filtered dataframe
-            
-        Returns:
-            list: List of insights about seasonal patterns
+        Detect seasonal patterns in user feedback
         """
-        if filtered_df.empty or len(filtered_df) < 10:
-            return []
-        
         # Group by day of week
         filtered_df['day_of_week'] = filtered_df['timestamp'].dt.day_name()
-        filtered_df['day_num'] = filtered_df['timestamp'].dt.dayofweek  # 0=Monday, 6=Sunday
         day_counts = filtered_df.groupby('day_of_week').size()
         
         # Group by month
         filtered_df['month'] = filtered_df['timestamp'].dt.month_name()
-        filtered_df['month_num'] = filtered_df['timestamp'].dt.month  # 1=Jan, 12=Dec
         month_counts = filtered_df.groupby('month').size()
         
         # Group by hour of day
         filtered_df['hour'] = filtered_df['timestamp'].dt.hour
         hour_counts = filtered_df.groupby('hour').size()
         
-        # Order days properly
+        # Compare distribution to check for patterns
         days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         day_counts = day_counts.reindex(days_order)
         
-        # Calculate weekday vs weekend patterns
-        weekday_counts = filtered_df[filtered_df['day_num'] < 5].groupby('day_num').size()
-        weekend_counts = filtered_df[filtered_df['day_num'] >= 5].groupby('day_num').size()
-        
-        weekday_avg = weekday_counts.mean() if not weekday_counts.empty else 0
-        weekend_avg = weekend_counts.mean() if not weekend_counts.empty else 0
-        
+        # Check for weekend vs weekday differences
+        weekday_avg = day_counts.iloc[:5].mean()
+        weekend_avg = day_counts.iloc[5:].mean()
         weekend_ratio = weekend_avg / weekday_avg if weekday_avg > 0 else 0
         
-        # Order months properly
+        # Check for monthly patterns (peak months)
         months_order = ['January', 'February', 'March', 'April', 'May', 'June', 
-                      'July', 'August', 'September', 'October', 'November', 'December']
+                        'July', 'August', 'September', 'October', 'November', 'December']
         month_counts = month_counts.reindex(months_order)
-        
-        # Calculate month-to-month variations
-        if len(month_counts) > 1:
-            month_std = month_counts.std()
-            month_mean = month_counts.mean()
-            month_cv = month_std / month_mean if month_mean > 0 else 0  # Coefficient of variation
-        else:
-            month_cv = 0
-            
-        # Analyze hourly patterns
-        morning_hours = list(range(6, 12))
-        afternoon_hours = list(range(12, 18))
-        evening_hours = list(range(18, 24))
-        night_hours = list(range(0, 6))
-        
-        # Get counts for each time period
-        morning_count = sum(hour_counts.get(hour, 0) for hour in morning_hours)
-        afternoon_count = sum(hour_counts.get(hour, 0) for hour in afternoon_hours)
-        evening_count = sum(hour_counts.get(hour, 0) for hour in evening_hours)
-        night_count = sum(hour_counts.get(hour, 0) for hour in night_hours)
-        
-        # Calculate the total count
-        total_count = morning_count + afternoon_count + evening_count + night_count
-        
-        # Calculate percentages
-        if total_count > 0:
-            morning_pct = (morning_count / total_count) * 100
-            afternoon_pct = (afternoon_count / total_count) * 100
-            evening_pct = (evening_count / total_count) * 100
-            night_pct = (night_count / total_count) * 100
-        else:
-            morning_pct = afternoon_pct = evening_pct = night_pct = 0
         
         # Return insights
         patterns = []
-        
-        # Weekday vs Weekend insights
-        if weekend_ratio < 0.7 and weekday_avg > 0:
-            patterns.append(f"Weekdays have {((1-weekend_ratio)*100):.1f}% more messages than weekends")
+        if weekend_ratio < 0.7:
+            patterns.append(f"Weekdays have {(1-weekend_ratio)*100:.1f}% more messages than weekends")
         elif weekend_ratio > 1.3:
-            patterns.append(f"Weekends have {((weekend_ratio-1)*100):.1f}% more messages than weekdays")
+            patterns.append(f"Weekends have {(weekend_ratio-1)*100:.1f}% more messages than weekdays")
         
-        # Day of week patterns
-        if len(day_counts) >= 5:
-            max_day = day_counts.idxmax()
-            min_day = day_counts.idxmin()
-            avg = day_counts.mean()
-            if day_counts[max_day] > avg * 1.5:
-                patterns.append(f"{max_day} has significantly higher activity ({day_counts[max_day]:.0f} messages)")
-            if day_counts[min_day] < avg * 0.5 and day_counts[min_day] > 0:
-                patterns.append(f"{min_day} has significantly lower activity ({day_counts[min_day]:.0f} messages)")
+        # Detect peak months (if significantly higher than average)
+        month_mean = month_counts.mean()
+        month_std = month_counts.std()
+        peak_months = month_counts[month_counts > month_mean + month_std].index.tolist()
+        if peak_months:
+            patterns.append(f"Peak activity during: {', '.join(peak_months)}")
         
-        # Month patterns
-        if month_cv > 0.3 and len(month_counts) >= 3:  # Only if we have enough variation and months
-            peak_months = month_counts[month_counts > month_counts.mean() + month_counts.std()].index.tolist()
-            low_months = month_counts[month_counts < month_counts.mean() - month_counts.std()].index.tolist()
-            
-            if peak_months:
-                patterns.append(f"Peak activity during: {', '.join(peak_months)}")
-            if low_months:
-                patterns.append(f"Low activity during: {', '.join(low_months)}")
-                
-        # Time of day patterns
-        time_periods = [
-            ("morning (6AM-12PM)", morning_pct),
-            ("afternoon (12PM-6PM)", afternoon_pct),
-            ("evening (6PM-12AM)", evening_pct),
-            ("night (12AM-6AM)", night_pct)
-        ]
-        
-        # Find the highest time period
-        highest_period = max(time_periods, key=lambda x: x[1])
-        if highest_period[1] > 40:  # If more than 40% of messages are in one period
-            patterns.append(f"Highest activity during {highest_period[0]} ({highest_period[1]:.1f}% of messages)")
-        
-        # Detect hourly spikes
-        busy_hours = []
-        for hour, count in hour_counts.items():
-            if count > hour_counts.mean() + 1.5 * hour_counts.std():
-                busy_hours.append(hour)
-        
+        # Detect hourly patterns
+        busy_hours = hour_counts[hour_counts > hour_counts.mean() + hour_counts.std()].index.tolist()
         if busy_hours:
-            busy_hours_fmt = [f"{h}:00" for h in sorted(busy_hours)]
-            patterns.append(f"Peak hours: {', '.join(busy_hours_fmt)}")
+            busy_hours_fmt = [f"{h}:00" for h in busy_hours]
+            patterns.append(f"Busiest hours: {', '.join(busy_hours_fmt)}")
         
         return patterns
 
-    ## 3. Enhanced multi-category handling and advanced trend detection:
-
-    def detect_trends(self, filtered_df, window=7):
-        """
-        Enhanced method to detect trends in message volume over time with more 
-        detailed pattern recognition
-        
-        Args:
-            filtered_df (DataFrame): The filtered dataframe
-            window (int): The rolling window size for trend analysis
-            
-        Returns:
-            list: List of insights about trends
-        """
-        if len(filtered_df) < window * 3:
-            return []  # Not enough data
-        
-        # Group by date
-        filtered_df['date'] = filtered_df['timestamp'].dt.date
-        daily_counts = filtered_df.groupby('date').size()
-        
-        # Sort by date
-        daily_counts = daily_counts.sort_index()
-        
-        # Calculate rolling average
-        rolling_avg = daily_counts.rolling(window=window).mean()
-        
-        # Calculate rate of change (first derivative)
-        if len(rolling_avg.dropna()) >= 2:
-            rate_of_change = rolling_avg.diff()
-            
-            # Calculate second derivative (acceleration/deceleration)
-            acceleration = rate_of_change.diff()
-        else:
-            rate_of_change = pd.Series()
-            acceleration = pd.Series()
-        
-        # Calculate overall trend using linear regression
-        insights = []
-        try:
-            import numpy as np
-            from scipy import stats
-            
-            # Need sufficient data points
-            if len(rolling_avg.dropna()) > 10:
-                x = np.arange(len(rolling_avg.dropna()))
-                y = rolling_avg.dropna().values
-                slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-                
-                # Strong trend if r_value squared > 0.7
-                strong_trend = r_value**2 > 0.7
-                
-                # Interpret the trend based on slope and r^2
-                if abs(slope) > 0.1:  # Significant slope
-                    direction = "increasing" if slope > 0 else "decreasing"
-                    strength = "strong" if strong_trend else "moderate"
-                    
-                    # Calculate overall percent change
-                    if rolling_avg.iloc[window] > 0:  # Prevent division by zero
-                        change_pct = abs((rolling_avg.iloc[-1] / rolling_avg.iloc[window] - 1) * 100)
-                        insights.append(f"{strength.capitalize()} {direction} trend detected: ~{change_pct:.1f}% {direction} over the period")
-                
-                # Check for changes in trend direction (inflection points)
-                if len(acceleration.dropna()) > window:
-                    # Find where acceleration changes sign
-                    sign_changes = np.diff(np.signbit(acceleration.dropna().values))
-                    inflection_points = np.where(sign_changes)[0]
-                    
-                    if len(inflection_points) > 0:
-                        # Get dates of inflection points
-                        inflection_dates = acceleration.dropna().index[inflection_points]
-                        
-                        # Report recent inflection points (within last 30% of timeframe)
-                        recent_cutoff = len(acceleration.dropna()) * 0.7
-                        recent_inflections = [date for i, date in enumerate(inflection_dates) 
-                                            if inflection_points[i] > recent_cutoff]
-                        
-                        if recent_inflections:
-                            last_inflection = recent_inflections[-1]
-                            old_direction = "increasing" if acceleration.loc[last_inflection] < 0 else "decreasing"
-                            new_direction = "increasing" if acceleration.loc[last_inflection] > 0 else "decreasing"
-                            insights.append(f"Trend direction changed from {old_direction} to {new_direction} around {last_inflection}")
-        
-        except Exception as e:
-            print(f"Error in trend analysis: {e}")
-        
-        # Detect sudden changes (rapid increases/decreases)
-        try:
-            # Calculate percent changes day-to-day
-            pct_changes = daily_counts.pct_change() * 100
-            
-            # Identify significant changes (beyond 3 standard deviations)
-            mean_change = pct_changes.mean()
-            std_change = pct_changes.std()
-            
-            if not np.isnan(std_change) and std_change > 0:
-                significant_changes = pct_changes[abs(pct_changes - mean_change) > 3 * std_change]
-                
-                # Report recent significant changes (last 3)
-                if not significant_changes.empty:
-                    recent_changes = significant_changes.tail(3)
-                    for date, change in recent_changes.items():
-                        direction = "increase" if change > 0 else "decrease"
-                        insights.append(f"Sudden {direction} of {abs(change):.1f}% on {date}")
-        
-        except Exception as e:
-            print(f"Error in change point detection: {e}")
-        
-        # Detect seasonality patterns (weekly, monthly)
-        try:
-            # Check for weekly patterns
-            if len(daily_counts) >= 14:  # At least 2 weeks of data
-                filtered_df['day_of_week'] = filtered_df['timestamp'].dt.dayofweek
-                dow_counts = filtered_df.groupby('day_of_week').size()
-                
-                # Check if certain days consistently have higher counts
-                dow_mean = dow_counts.mean()
-                dow_std = dow_counts.std()
-                
-                if dow_std > 0:
-                    high_days = dow_counts[dow_counts > dow_mean + dow_std]
-                    low_days = dow_counts[dow_counts < dow_mean - dow_std]
-                    
-                    # Map day numbers to names
-                    day_names = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 
-                                3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday'}
-                    
-                    if not high_days.empty:
-                        high_day_names = [day_names[day] for day in high_days.index]
-                        insights.append(f"Weekly pattern detected: higher activity on {', '.join(high_day_names)}")
-                    
-                    if not low_days.empty:
-                        low_day_names = [day_names[day] for day in low_days.index]
-                        insights.append(f"Weekly pattern detected: lower activity on {', '.join(low_day_names)}")
-        
-        except Exception as e:
-            print(f"Error in seasonality detection: {e}")
-        
-        return insights
-
     def compare_year_over_year(self, filtered_df, category=None):
         """
-        Enhanced method to compare current year's data with previous years with better
-        detection of seasonal patterns
-        
-        Args:
-            filtered_df (DataFrame): The filtered dataframe
-            category (str, optional): The category being analyzed
-            
-        Returns:
-            list: List of insights about year-over-year comparisons
+        Compare current year's data with previous years for the same time period
         """
         if filtered_df.empty:
             return []
@@ -1900,7 +1413,6 @@ class EnhancedFeedbackChatbot:
         # Extract year and month
         filtered_df['year'] = filtered_df['timestamp'].dt.year
         filtered_df['month'] = filtered_df['timestamp'].dt.month
-        filtered_df['month_name'] = filtered_df['timestamp'].dt.month_name()
         
         # Group by year and month
         if category:
@@ -1917,10 +1429,6 @@ class EnhancedFeedbackChatbot:
             current_year = years[-1]
             prev_year = years[-2]
             
-            # Create a more comprehensive comparison
-            comparisons = []
-            growth_values = []
-            
             # Calculate YoY growth for each month where data exists for both years
             for month in range(1, 13):
                 if month in year_month_counts.index and not year_month_counts.empty:
@@ -1932,53 +1440,51 @@ class EnhancedFeedbackChatbot:
                             growth = ((current - previous) / previous) * 100
                             month_name = datetime(2000, month, 1).strftime('%B')
                             
-                            comparisons.append((month, month_name, growth))
-                            growth_values.append(growth)
-            
-            # Analyze the overall pattern
-            if growth_values:
-                avg_growth = sum(growth_values) / len(growth_values)
-                max_growth = max(growth_values)
-                min_growth = min(growth_values)
-                
-                # Overall year-over-year trend
-                if abs(avg_growth) > 10:  # Only report if significant
-                    direction = "increase" if avg_growth > 0 else "decrease"
-                    insights.append(f"Overall {direction} of {abs(avg_growth):.1f}% compared to previous year")
-                
-                # Report months with significant changes
-                significant_months = [(month_name, growth) for _, month_name, growth in comparisons 
-                                    if abs(growth) > max(20, abs(avg_growth) * 1.5)]
-                
-                if significant_months:
-                    for month_name, growth in significant_months:
-                        direction = "increase" if growth > 0 else "decrease"
-                        insights.append(f"{month_name} shows a {abs(growth):.1f}% {direction} compared to last year")
-                
-                # Detect seasonal variations
-                if len(comparisons) >= 3:
-                    # Check for consistent patterns across seasons
-                    seasons = {
-                        'Winter': [12, 1, 2],
-                        'Spring': [3, 4, 5],
-                        'Summer': [6, 7, 8],
-                        'Fall': [9, 10, 11]
-                    }
-                    
-                    season_growth = {}
-                    for season, months in seasons.items():
-                        season_values = [growth for month, _, growth in comparisons if month in months]
-                        if season_values:
-                            season_growth[season] = sum(season_values) / len(season_values)
-                    
-                    # Report significant seasonal changes
-                    for season, growth in season_growth.items():
-                        if abs(growth) > max(25, abs(avg_growth) * 1.8):  # Significantly different from average
-                            direction = "increase" if growth > 0 else "decrease"
-                            insights.append(f"Significant {direction} of {abs(growth):.1f}% during {season} months")
+                            if abs(growth) > 20:  # Only report significant changes
+                                direction = "increase" if growth > 0 else "decrease"
+                                insights.append(f"{month_name} shows a {abs(growth):.1f}% {direction} compared to last year")
         
         return insights
-
+    
+    def detect_trends(self, filtered_df, window=7):
+        """
+        Detect trends in message volume over time
+        """
+        if len(filtered_df) < window * 3:
+            return []  # Not enough data
+        
+        # Group by date
+        filtered_df['date'] = filtered_df['timestamp'].dt.date
+        daily_counts = filtered_df.groupby('date').size()
+        
+        # Sort by date
+        daily_counts = daily_counts.sort_index()
+        
+        # Calculate rolling average
+        rolling_avg = daily_counts.rolling(window=window).mean()
+        
+        # Calculate slope of trend line
+        import numpy as np
+        from scipy import stats
+        
+        # Need sufficient data points
+        if len(rolling_avg.dropna()) > 10:
+            x = np.arange(len(rolling_avg.dropna()))
+            y = rolling_avg.dropna().values
+            slope, _, _, _, _ = stats.linregress(x, y)
+            
+            # Interpret the trend
+            insights = []
+            if slope > 0.1:  # Positive trend
+                percent_increase = (rolling_avg.iloc[-1] / rolling_avg.iloc[window] - 1) * 100
+                insights.append(f"Increasing trend detected: ~{percent_increase:.1f}% increase over the time period")
+            elif slope < -0.1:  # Negative trend
+                percent_decrease = (1 - rolling_avg.iloc[-1] / rolling_avg.iloc[window]) * 100
+                insights.append(f"Decreasing trend detected: ~{percent_decrease:.1f}% decrease over the time period")
+            
+            return insights
+        
+        return []
 
     def detect_category_shifts(self, filtered_df):
         """
