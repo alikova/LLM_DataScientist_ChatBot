@@ -106,15 +106,10 @@ def initialize_session_state():
         # Path to your data file - a relative path
         data_path = "data/sample_data.csv"
 
-        # Allow overriding with query parameter
-        query_params = st.experimental_get_query_params()
-        if "data_path" in query_params:
-            data_path = query_params["data_path"][0]
-
         # Check if the file exists
         if not os.path.exists(data_path):
             st.error(f"Data file not found: {data_path}")
-            st.info("Please provide a valid path to your data file.")
+            st.info("Please update the data_path variable in the code with the correct path to your data file.")
             st.stop()
 
         # Get API key from secrets or environment if available
