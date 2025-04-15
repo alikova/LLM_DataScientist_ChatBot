@@ -22,8 +22,8 @@ chatbot = load_chatbot()
 st.title("PETe - Feedback Analysis Chatbot")
 
 st.markdown("Ask PETe a question about user feedback. For example:")
-st.markdown("- `login issues from Telegram last month`")
-st.markdown("- `account issues at LiveChat in 2024`")
+st.markdown("- `Can you please provide account issues at Live chat in 2024?`")
+st.markdown("- `Show login issues from Telegram last month`")
 st.markdown("- `show deposit problems for LiveChat users`")
 st.markdown("- `what about telegram?`")
 
