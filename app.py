@@ -25,7 +25,7 @@ st.markdown("Ask PETe a question about user feedback. For example:")
 st.markdown("- `login issues from Telegram last month`")
 st.markdown("- `account issues at LiveChat in 2024`")
 st.markdown("- `show deposit problems for LiveChat users`")
-st.markdown("- `what about Telegram?`")
+st.markdown("- `what about telegram?`")
 
 
 # User prompt input
