@@ -19,13 +19,12 @@ def load_chatbot():
 chatbot = load_chatbot()
 
 # --- Streamlit UI ---
-st.title("💬 PETe - Feedback Analysis Chatbot")
+st.title("PETe - Feedback Analysis Chatbot")
 
 st.markdown("Ask PETe a question about user feedback. For example:")
 st.markdown("- `login issues from Telegram last month`")
 st.markdown("- `show deposit problems for LiveChat users`")
-st.markdown("- `analyze messages that could belong to multiple categories`")
-st.markdown("- `compare payment issues between Telegram and LiveChat`")
+st.markdown("- `what about Telegram?`")
 
 # User prompt input
 query = st.text_input("Ask your question here:")
