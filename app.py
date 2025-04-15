@@ -4,6 +4,8 @@ import streamlit as st
 from openai_enhanced_chatbot import EnhancedFeedbackChatbot
 import os
 
+st.set_page_config(page_title="Feedback Chatbot PETe", layout="wide")
+
 # --- Load the chatbot ---
 @st.cache_resource
 def load_chatbot():
@@ -17,7 +19,6 @@ def load_chatbot():
 chatbot = load_chatbot()
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="Feedback Chatbot PETe", layout="wide")
 st.title("PETebot - Feedback Analysis Chatbot")
 
 st.markdown("Ask PETe a question about user feedback. For example:")
