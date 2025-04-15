@@ -1608,3 +1608,4 @@ class EnhancedFeedbackChatbot:
     def get_conversation_history(self):
         """Return the full conversation history"""
         return self.conversation_memory['messages']
+
