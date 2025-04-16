@@ -104,7 +104,7 @@ def initialize_session_state():
 
     if 'chatbot' not in st.session_state:
         # Path to your data file - a relative path
-        data_path = "data/sample_data.csv"
+        data_path = "final_dataset_for_chatbot.csv"
 
         # Allow overriding with query parameter
         query_params = st.experimental_get_query_params()
