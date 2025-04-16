@@ -1,33 +1,53 @@
 # LLM_DataScientist_ChatBot
-Analyze and classify messages from a dataset, then develop a chatbot that can respond to natural language queries with meaningful insights.
+We analyzed and classified messages from a dataset using BERT, then we developed a chatbot with conversational memory that can respond to natural language queries with meaningful insights.
 
 # Feedback Analysis Chatbot
 
-An intelligent chatbot for analyzing user feedback with temporal pattern detection and multi-category classification.
+An intelligent chatbot for analyzing user feedback with temporal pattern detection and (multy)category classification.
 
 ## Features
 - Filter feedback by category, source, and time range
 - Detect seasonal patterns and trends
 - Identify spikes in feedback volume
-- Handle queries spanning multiple categories
+- Handle queries spanning different categories
 - Maintain conversation context for follow-up questions
 
 ## Setup
 1. Clone this repository
 2. Install dependencies: `pip install -r requirements.txt`
-3. Run the web app: `streamlit run app_with_memory.py`
-4. Optional: Enter your OpenAI API key for enhanced query understanding
+3. Run the web app: `streamlit run app.py` on link: https://llmdatascientistchatbot-trzggeyddrk6hhngs8vyj9.streamlit.app/
 
-## Data Format
+## Dataset and Data Format
+Dataset is saved in the repository under the name: final_dataset_for_chatbot.csv
 The chatbot expects a CSV file with the following columns:
-- id_user: Unique user identifier
-- message: The feedback text
-- category: Feedback category
-- source: Source of the feedback (e.g., LiveChat, Telegram)
-- timestamp: Date and time of the feedback
+- id_user: Unique user identifier (int)
+- message: The feedback text (str)
+- category: Feedback category (str)
+- source: Source of the feedback (e.g., LiveChat, Telegram) (str)
+- timestamp: Date and time of the feedback (int to datetime)
 
 User Feedback Analysis and Chatbot System
-This repository contains a comprehensive system for analyzing user feedback messages from LiveChat and Telegram, classifying them into actionable categories, and providing a natural language chatbot interface for querying the data.
+This repository contains a system for analyzing user feedback messages from LiveChat and Telegram, classifying them into actionable categories, and providing a natural language chatbot interface for querying the data.
+
+Project Structure
+feedback-analysis-chatbot/
+│
+├── data/
+│   ├── sample_data.csv          # Sample feedback data
+│   ├── cleaned_data.csv         # Preprocessed data
+│   ├── bert_embeddings.npy      # BERT embeddings for messages
+│   └── final_dataset_for_chatbot.csv  # Final processed dataset
+│
+├── src/
+│   ├── preprocessing.py         # Data cleaning and BERT tokenization
+│   ├── embeddings.py            # BERT embedding generation
+│   ├── categorization.py        # Message categorization logic
+│   ├── openai_enhanced_chatbot.py  # Main chatbot implementation
+│   └── app_with_memory.py       # Advanced Streamlit interface with memory
+│
+├── app.py                       # Streamlit interface (simplified)
+├── requirements.txt             # Project dependencies
+└── README.md                    # Project documentation
 
 Project Overview
 The system processes user feedback messages to:
@@ -53,23 +73,51 @@ Installation
 Clone this repository:
 git clone https://github.com/alikova/LLM_DataScientist_ChatBot.git
 
-Open the notebooks in Google Colab:
+* Optionally - Open the notebooks in Google Colab:
 Navigate to Google Colab
 File → Open notebook → GitHub
 Enter your repository URL
 Follow the step-by-step instructions in each notebook
 
-Project Structure
-├── notebooks/
-│   ├── 1_Data_Preprocessing.ipynb   # Data cleaning and preparation
-│   ├── 2_Model_Training.ipynb       # BERT embeddings and classification
-│   └── 3_Chatbot_Interface.ipynb    # Interactive chatbot demo
-├── src/
-│   ├── preprocessor.py              # Data preprocessing functions
-│   ├── embeddings.py                # BERT embedding functions
-│   ├── classifier.py                # Classification model
-│   └── chatbot.py                   # Chatbot implementation
-└── README.md                        # This file
+Setup Instructions of the repository
+
+Clone the repository
+git clone https://github.com/yourusername/feedback-analysis-chatbot.git
+cd feedback-analysis-chatbot
+
+Create virtual environment and install dependencies
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+Run preprocessing and generate embeddings from LLM_DataScientist_analyse_classify_chatbot.ipnyb
+python src/preprocessing.py --input data/your_data.csv --output_dir data
+python src/embeddings.py --input data/cleaned_data.csv --output_dir data
+python src/categorization.py --input data/cleaned_data.csv --output data/final_dataset_for_chatbot.csv --embeddings data/bert_embeddings.npy
+
+Run the Streamlit app
+streamlit run app.py
+For the enhanced version with advanced memory features and OpenAI API key (still in development):
+streamlit run src/app_with_memory.py
+
+Usage
+After launching the app, you can ask questions like:
+
+"Provide account issues at Live chat."
+"Could you show login issues from Telegram in 2024?"
+"show deposit problems for LiveChat users"
+"and what about telegram?"
+
+The chatbot will process your query, apply appropriate filters, and display relevant statistics and visualizations.
+
+Requirements
+Python 3.8+
+PyTorch
+Transformers (HuggingFace)
+Streamlit
+Pandas
+Matplotlib
+NLTK
 
 Usage
 The project is organized into three main notebooks:
@@ -91,24 +139,35 @@ Implements a natural language interface
 Supports querying the dataset
 Maintains conversational context
 Provides statistical insights and visualizations
+
+
+
 Evaluation Questions
+
 How did you classify feedback?
 The classification system uses a hybrid approach:
+
+Our system implements a hybrid feedback classification approach combining BERT embeddings with weighted rule-based pattern matching. This architecture balances the semantic understanding of transformers with the precision of explicit rules.
 
 Unsupervised clustering: BERT embeddings + K-means to identify natural groupings
 Supervised classification: Random Forest classifier trained on labeled examples
 Rule-based refinement: Domain-specific rules to handle edge cases
-This approach was chosen because it:
 
+This approach was chosen because it:
 Leverages semantic understanding from BERT
 Doesn't require large amounts of labeled data
 Can be continuously improved with more data
-For previously unseen issues (e.g., a new wallet blocking deposits), the system can:
 
+For previously unseen issues (e.g., a new wallet blocking deposits), the system can:
 Detect anomalies in embedding space
 Assign to closest existing category
 Flag for human review when confidence is low
+
+BERT's semantic capabilities can position such messages near relevant domain centroids while rule-based fallbacks catch key terminology. Regular pattern updates and occasional model fine-tuning maintain classification accuracy as new issues emerge.
+
 How does your chatbot manage conversational context?
+
+Conversational context is managed through a structured memory system tracking message history, active filters, and query intent (new topic, follow-up, context switch, comparison). The system maintains relevant context across interactions, allowing natural conversation flow where filters persist appropriately between related queries.
 The chatbot maintains context through:
 
 A context dictionary tracking category, source, and time range filters
@@ -117,24 +176,39 @@ Incremental context updates (only overwriting what changes)
 Explicit context reset functionality
 
 What are the main limitations?
+
 Vague feedback challenges: Messages with limited content are difficult to classify
 Multi-category overlaps: Messages may belong to multiple categories
-Conversational memory constraints: Complex multi-turn discussions may lose context
+Conversational memory constraints: Complex discussions may lose context, memory span is currently relatively short 
 Language limitations: Currently optimized for English only
+User experience: Chatbot interface is simply designed with no additional options to search the data with shortcuts, buttons, etc.
+
+Without continuous learning, the system requires manual updates to adapt to evolving language patterns.
 
 How could the system be improved?
-Fine-tuning BERT: Train on domain-specific data
-Multi-label classification: Allow messages to belong to multiple categories
+
+Multi-label classification: Allow messages to belong to multiple categories and sub-categories
 User feedback integration: Learn from human corrections
 Advanced NLP: Add entity recognition and sentiment analysis
-Time-series analysis: Implement more sophisticated trend detection
+Time-series analysis: Implement more sophisticated trend detection with additional information about the source, users, similar use of words, etc.
+
+Enhancement opportunities include implementing active learning from user corrections, developing hierarchical classification for multi-category issues, creating vector database storage for embeddings, and adding anomaly detection for emerging issue identification.
+Full conversation analysis would enable resolution pattern identification, sentiment progression tracking, and agent performance evaluation - moving beyond classification toward complete interaction optimization. In case of need for simplified version, the system would be improved to classical ML methods for lower computational power.
 
 How would you measure and validate classification correctness?
+
 Human evaluation: Manual review of a representative sample
 Confusion matrix analysis: Precision, recall, F1-score per category
 Cross-validation: K-fold validation to ensure robustness
 Active learning: Prioritize review of low-confidence predictions
 User feedback loop: Track when users disagree with classifications
+
+Classification validation while training a classification model used precision/recall metrics, cross-validation techniques, and visualization tools to correlate classification accuracy with categorized dataset.
+
+
+Project is currently still in the beta phase, so bugs and performace issues might be present.
+
+Thank you for visiting the project.
 
 Contact
 Alenka Žumer - zumer.alenka@protonmail.com 
