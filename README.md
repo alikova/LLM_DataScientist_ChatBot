@@ -26,10 +26,10 @@ The chatbot expects a CSV file with the following columns:
 - source: Source of the feedback (e.g., LiveChat, Telegram) (str)
 - timestamp: Date and time of the feedback (int to datetime)
 
-# User Feedback Analysis and Chatbot System
+## User Feedback Analysis and Chatbot System
 This repository contains a system for analyzing user feedback messages from LiveChat and Telegram, classifying them into actionable categories, and providing a natural language chatbot interface for querying the data.
 
-# Project Structure
+## Project Structure
 feedback-analysis-chatbot/
 │
 ├── data/
