@@ -53,9 +53,6 @@ feedback-analysis-chatbot/
 ### Getting Started
 Prerequisites
 Python 3.7+
-Google Colab (for easy execution)
-Access to Google Drive (optional, for storing large datasets)
-Installation
 
 ### Clone this repository:
 git clone https://github.com/alikova/LLM_DataScientist_ChatBot.git
