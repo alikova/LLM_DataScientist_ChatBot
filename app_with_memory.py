@@ -22,7 +22,7 @@ except ImportError:
 
 # Page config
 st.set_page_config(
-    page_title="PETe - Feedback Analysis Chatbot",
+    page_title="Feedback Analysis Chatbot",
     page_icon="💬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -104,10 +104,10 @@ def initialize_session_state():
 
     if 'chatbot' not in st.session_state:
         # Path to your data file - a relative path
-        data_path = "final_dataset_for_chatbot.csv"
+        data_path = "data/sample_data.csv"
 
         # Allow overriding with query parameter
-        query_params = st.query_params()
+        query_params = st.experimental_get_query_params()
         if "data_path" in query_params:
             data_path = query_params["data_path"][0]
 
@@ -378,12 +378,13 @@ def add_sidebar():
 
         st.subheader("Example Queries")
         example_queries = [
-            "Show me login issues from Telegram.",
+            "Show me login issues from the last month",
             "How many payment problems were reported in LiveChat?",
             "What about in Telegram?", # Follow-up query
-            "Show me bonus activation issues from Live Chat",
+            "Show me bonus activation issues from the last week",
+            "Compare game problems between LiveChat and Telegram",
             "What are the most common technical errors?",
-            "Show me free spins issues"
+            "Show me free spins issues from last month"
         ]
 
         for query in example_queries:
