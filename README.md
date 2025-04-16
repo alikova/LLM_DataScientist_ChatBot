@@ -1,5 +1,5 @@
 # LLM_DataScientist_ChatBot
-We analyzed and classified messages from a dataset using BERT, then we developed a chatbot with conversational memory that can respond to natural language queries with meaningful insights.
+The project involves analyzing and classifying messages from a dataset using BERT and developing a chatbot with conversational memory to respond to natural language queries with meaningful insights.
 
 # Feedback Analysis Chatbot
 
