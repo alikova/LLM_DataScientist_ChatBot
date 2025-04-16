@@ -79,6 +79,9 @@ python src/preprocessing.py --input data/your_data.csv --output_dir data
 python src/embeddings.py --input data/cleaned_data.csv --output_dir data
 python src/categorization.py --input data/cleaned_data.csv --output data/final_dataset_for_chatbot.csv --embeddings data/bert_embeddings.npy
 
+### Run the Enhanced Chatbot
+openai_enhanced_chatbot.py
+
 ### Run the Streamlit app
 streamlit run app.py
 For the enhanced version with advanced memory features and OpenAI API key (still in development):
