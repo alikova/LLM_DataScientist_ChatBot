@@ -50,9 +50,16 @@ feedback-analysis-chatbot/
 └── README.md                    # Project documentation
 
 
-### Getting Started
-Prerequisites
-Python 3.7+
+# Setup Instructions of the repository
+
+### Requirements
+Python 3.8+
+PyTorch
+Transformers (HuggingFace)
+Streamlit
+Pandas
+Matplotlib
+NLTK
 
 ### Clone this repository:
 git clone https://github.com/alikova/LLM_DataScientist_ChatBot.git
@@ -62,11 +69,6 @@ Navigate to Google Colab
 File → Open notebook → GitHub
 Enter your repository URL
 Follow the step-by-step instructions in each notebook
-
-# Setup Instructions of the repository
-
-### Clone the repository
-git clone https://github.com/yourusername/feedback-analysis-chatbot.git
 cd feedback-analysis-chatbot
 
 ### Create virtual environment and install dependencies
@@ -97,24 +99,10 @@ After launching the app, you can ask questions like:
 
 The chatbot will process your query, apply appropriate filters, and display relevant statistics and visualizations.
 
-## Requirements
-Python 3.8+
-PyTorch
-Transformers (HuggingFace)
-Streamlit
-Pandas
-Matplotlib
-NLTK
-
 ## Project Overview
 The system processes user feedback messages based on the categorization system.
 
 The project is organized into three main notebooks:
-
-### Clean and preprocess text data
-Generate embeddings using BERT
-Classify messages into actionable categories
-Provide a conversational interface for analyzing the data
 
 1. Data Preprocessing
 Loads and cleans the raw data
@@ -133,17 +121,22 @@ Performs clustering to identify natural categories
 Trains a classification model
 Evaluates model performance
 
-### Features
-Message Classification: Automatically categorizes user messages into predefined categories
-Dynamic Filtering: Supports filtering by category, time range, and source
-Statistical Insights: Provides metrics like message counts, unique users, and trend detection
-Conversational Memory: Maintains context across multiple queries
+### Clean and preprocess text data
+Generate embeddings using BERT
+Classify messages into actionable categories
+Provide a conversational interface for analyzing the data
 
 3. Chatbot Interface
 Implements a natural language interface
 Supports querying the dataset
 Maintains conversational context
 Provides statistical insights and visualizations
+
+### Features
+Message Classification: Automatically categorizes user messages into predefined categories
+Dynamic Filtering: Supports filtering by category, time range, and source
+Statistical Insights: Provides metrics like message counts, unique users, and trend detection
+Conversational Memory: Maintains context across multiple queries
 
 
 # Evaluation Questions
