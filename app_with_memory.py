@@ -22,7 +22,7 @@ except ImportError:
 
 # Page config
 st.set_page_config(
-    page_title="Feedback Analysis Chatbot",
+    page_title="PETe - Feedback Analysis Chatbot",
     page_icon="💬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -378,13 +378,12 @@ def add_sidebar():
 
         st.subheader("Example Queries")
         example_queries = [
-            "Show me login issues from the last month",
+            "Show me login issues from Telegram.",
             "How many payment problems were reported in LiveChat?",
             "What about in Telegram?", # Follow-up query
-            "Show me bonus activation issues from the last week",
-            "Compare game problems between LiveChat and Telegram",
+            "Show me bonus activation issues from Live Chat",
             "What are the most common technical errors?",
-            "Show me free spins issues from last month"
+            "Show me free spins issues"
         ]
 
         for query in example_queries:
