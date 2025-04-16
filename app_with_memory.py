@@ -107,7 +107,7 @@ def initialize_session_state():
         data_path = "final_dataset_for_chatbot.csv"
 
         # Allow overriding with query parameter
-        query_params = st.experimental_get_query_params()
+        query_params = st.query_params()
         if "data_path" in query_params:
             data_path = query_params["data_path"][0]
 
