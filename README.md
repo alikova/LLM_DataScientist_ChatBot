@@ -87,7 +87,7 @@ streamlit run app.py
 For the enhanced version with advanced memory features and OpenAI API key (still in development):
 streamlit run src/app_with_memory.py
 
-# Usage
+## Usage
 After launching the app, you can ask questions like:
 
 "Provide account issues at Live chat."
@@ -97,7 +97,7 @@ After launching the app, you can ask questions like:
 
 The chatbot will process your query, apply appropriate filters, and display relevant statistics and visualizations.
 
-# Requirements
+## Requirements
 Python 3.8+
 PyTorch
 Transformers (HuggingFace)
@@ -106,7 +106,7 @@ Pandas
 Matplotlib
 NLTK
 
-# Project Overview
+## Project Overview
 The system processes user feedback messages based on the categorization system.
 
 The project is organized into three main notebooks:
@@ -219,9 +219,9 @@ Classification validation while training a classification model used precision/r
 
 
 
+<hr>
 
-
-### Project is currently still in the beta phase, so bugs and performace issues might be present.
+Project is currently still in the beta phase, so bugs and performace issues might be present.
 
 Thank you for visiting the project.
 
