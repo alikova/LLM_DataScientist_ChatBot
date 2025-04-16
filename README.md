@@ -218,7 +218,10 @@ User feedback loop: Track when users disagree with classifications
 Classification validation while training a classification model used precision/recall metrics, cross-validation techniques, and visualization tools to correlate classification accuracy with categorized dataset.
 
 
-Project is currently still in the beta phase, so bugs and performace issues might be present.
+
+
+
+### Project is currently still in the beta phase, so bugs and performace issues might be present.
 
 Thank you for visiting the project.
 
