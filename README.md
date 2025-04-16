@@ -136,9 +136,9 @@ The project is organized into three main notebooks:
 
 This system implements a hybrid feedback classification approach combining BERT embeddings with weighted rule-based pattern matching. This architecture balances the semantic understanding of transformers with the precision of explicit rules.
 
-Unsupervised clustering: BERT embeddings + K-means to identify natural groupings
-Supervised classification: Random Forest classifier trained on labeled examples
-Rule-based refinement: Domain-specific rules to handle edge cases
+Unsupervised clustering: BERT embeddings + K-means to identify natural groupings,
+Supervised classification: Random Forest classifier trained on labeled examples,
+Rule-based refinement: Domain-specific rules to handle edge cases.
 
 This approach was chosen because it:
 Leverages semantic understanding from BERT
@@ -157,27 +157,28 @@ BERT's semantic capabilities can position such messages near relevant domain cen
 Conversational context is managed through a structured memory system tracking message history, active filters, and query intent (new topic, follow-up, context switch, comparison). The system maintains relevant context across interactions, allowing natural conversation flow where filters persist appropriately between related queries.
 The chatbot maintains context through:
 
-A context dictionary tracking category, source, and time range filters
-Natural language parsing to extract relevant entities
-Incremental context updates (only overwriting what changes)
-Explicit context reset functionality
+a context dictionary tracking category, source, and time range filters;
+natural language parsing to extract relevant entities;
+incremental context updates (only overwriting what changes);
+explicit context reset functionality.
 
 ### What are the main limitations?
 
-Vague feedback challenges: Messages with limited content are difficult to classify
-Multi-category overlaps: Messages may belong to multiple categories
-Conversational memory constraints: Complex discussions may lose context, memory span is currently relatively short 
-Language limitations: Currently optimized for English only
-User experience: Chatbot interface is simply designed with no additional options to search the data with shortcuts, buttons, etc.
+- Vague feedback challenges: Messages with limited content are difficult to classify,
+- Multi-category overlaps: Messages may belong to multiple categories,
+- Conversational memory constraints: Complex discussions may lose context, memory span is currently relatively short,
+- Language limitations: Currently optimized for English only,
+- User experience: Chatbot interface is simply designed with no additional options to search the data with shortcuts, buttons, etc.
 
 Without continuous learning, the system requires manual updates to adapt to evolving language patterns.
 
 ### How could the system be improved?
 
-Multi-label classification: Allow messages to belong to multiple categories and sub-categories
-User feedback integration: Learn from human corrections
-Advanced NLP: Add entity recognition and sentiment analysis
-Time-series analysis: Implement more sophisticated trend detection with additional information about the source, users, similar use of words, etc.
+With:
+- Multi-label classification: Allow messages to belong to multiple categories and sub-categories,
+- User feedback integration: Learn from human corrections,
+- Advanced NLP: Add entity recognition and sentiment analysis,
+- Time-series analysis: Implement more sophisticated trend detection with additional information about the source, users, similar use of words, etc.
 
 Enhancement opportunities include implementing active learning from user corrections, developing hierarchical classification for multi-category issues, creating vector database storage for embeddings, and adding anomaly detection for emerging issue identification.
 Full conversation analysis would enable resolution pattern identification, sentiment progression tracking, and agent performance evaluation - moving beyond classification toward complete interaction optimization. In case of need for simplified version, the system would be improved to classical ML methods for lower computational power.
@@ -193,11 +194,12 @@ Conversation flow analysis would help identify common friction points and optima
 
 ### How would you measure and validate classification correctness?
 
-Human evaluation: Manual review of a representative sample
-Confusion matrix analysis: Precision, recall, F1-score per category
-Cross-validation: K-fold validation to ensure robustness
-Active learning: Prioritize review of low-confidence predictions
-User feedback loop: Track when users disagree with classifications
+I would measure and validte classification correctness with:
+- Human evaluation: Manual review of a representative sample,
+- Confusion matrix analysis: Precision, recall, F1-score per category,
+- Cross-validation: K-fold validation to ensure robustness,
+- Active learning: Prioritize review of low-confidence predictions,
+- User feedback loop: Track when users disagree with classifications.
 
 Classification validation while training a classification model used precision/recall metrics, cross-validation techniques, and visualization tools to correlate classification accuracy with categorized dataset.
 
