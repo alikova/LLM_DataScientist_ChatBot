@@ -54,7 +54,7 @@ if query and chatbot:
             elif 'category_overlap' in response['data'] and response['data']['category_overlap']:
                 st.metric("Overlap Rate", f"{response['data']['category_overlap']['overlap_percent']:.1f}%")
 
-        # ENHANCED TIME CHARTS - Replace the existing time chart section with this code
+        # ENHANCED TIME CHARTS 
         if 'charts' in response['data'] and response['data']['charts']:
             st.subheader("Time Analysis")
             for chart_data in response['data']['charts']:
@@ -64,48 +64,68 @@ if query and chatbot:
                     
                     # Ensure we have data spanning more time
                     if len(time_series) > 1:
-                        # Calculate date range
-                        date_range = (time_series.index.max() - time_series.index.min()).days
-                        
-                        # For short date ranges, keep original daily view
-                        if date_range < 60:
+                        # Make sure the index is datetime
+                        try:
+                            # Check if index is already datetime
+                            if not isinstance(time_series.index, pd.DatetimeIndex):
+                                # Try to convert to datetime
+                                time_series = pd.Series(
+                                    time_series.values,
+                                    index=pd.to_datetime(time_series.index)
+                                )
+                            
+                            # Calculate date range
+                            date_range = (time_series.index.max() - time_series.index.min()).days
+                            
+                            # For short date ranges, keep original daily view
+                            if date_range < 60:
+                                fig, ax = plt.subplots(figsize=(10, 4))
+                                ax.plot(time_series.index, time_series.values, marker='o')
+                                ax.set_title(f"Messages Over Time{' - ' + chart_data.get('category', '') if 'category' in chart_data else ''}")
+                                
+                            # For longer ranges, resample to show full year better
+                            else:
+                                # Create monthly view for ranges over 60 days
+                                monthly_data = time_series.resample('M').sum()
+                                
+                                fig, ax = plt.subplots(figsize=(12, 5))
+                                ax.plot(monthly_data.index, monthly_data.values, marker='o', linewidth=2)
+                                ax.set_title(f"Monthly Messages Over Time{' - ' + chart_data.get('category', '') if 'category' in chart_data else ''}")
+                                
+                                # Format x-axis to show month names
+                                ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+                                ax.xaxis.set_major_locator(mdates.MonthLocator())
+                                
+                                # Add year markers
+                                years = sorted(list(set(d.year for d in monthly_data.index)))
+                                for year in years:
+                                    plt.axvline(pd.Timestamp(f"{year}-01-01"), color='gray', linestyle='--', alpha=0.5)
+                                    if monthly_data.max() > 0:  # Check to avoid division by zero
+                                        plt.text(pd.Timestamp(f"{year}-01-01"), monthly_data.max() * 1.05, str(year), 
+                                                ha='center', va='bottom', fontsize=10)
+                                
+                                # Calculate and display year-over-year stats if we have multiple years
+                                if len(years) > 1 and len(monthly_data) > 12:
+                                    yearly_data = time_series.resample('Y').sum()
+                                    if len(yearly_data) > 1 and yearly_data.iloc[-2] > 0:  # Prevent division by zero
+                                        yoy_change = ((yearly_data.iloc[-1] - yearly_data.iloc[-2]) / yearly_data.iloc[-2]) * 100
+                                        change_text = f"Year-over-year change: {yoy_change:.1f}%"
+                                        plt.figtext(0.02, 0.02, change_text, fontsize=10, color='blue')
+                            
+                            plt.xticks(rotation=45)
+                            plt.tight_layout()
+                            st.pyplot(fig)
+                            
+                        except Exception as e:
+                            # Fallback to simple plot if any error occurs with date handling
+                            st.write(f"Using simplified time plot due to date formatting: {str(e)}")
                             fig, ax = plt.subplots(figsize=(10, 4))
-                            ax.plot(time_series.index, time_series.values, marker='o')
-                            ax.set_title(f"Messages Over Time{' - ' + chart_data.get('category', '') if 'category' in chart_data else ''}")
-                            
-                        # For longer ranges, resample to show full year better
-                        else:
-                            # Create monthly view for ranges over 60 days
-                            monthly_data = time_series.resample('M').sum()
-                            
-                            fig, ax = plt.subplots(figsize=(12, 5))
-                            ax.plot(monthly_data.index, monthly_data.values, marker='o', linewidth=2)
-                            ax.set_title(f"Monthly Messages Over Time{' - ' + chart_data.get('category', '') if 'category' in chart_data else ''}")
-                            
-                            # Format x-axis to show month names
-                            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-                            ax.xaxis.set_major_locator(mdates.MonthLocator())
-                            
-                            # Add year markers
-                            years = sorted(list(set(d.year for d in monthly_data.index)))
-                            for year in years:
-                                plt.axvline(pd.Timestamp(f"{year}-01-01"), color='gray', linestyle='--', alpha=0.5)
-                                plt.text(pd.Timestamp(f"{year}-01-01"), monthly_data.max() * 1.05, str(year), 
-                                        ha='center', va='bottom', fontsize=10)
-                            
-                            # Calculate and display year-over-year stats if we have multiple years
-                            if len(years) > 1 and len(monthly_data) > 12:
-                                yearly_data = time_series.resample('Y').sum()
-                                if len(yearly_data) > 1:
-                                    yoy_change = ((yearly_data.iloc[-1] - yearly_data.iloc[-2]) / yearly_data.iloc[-2]) * 100
-                                    change_text = f"Year-over-year change: {yoy_change:.1f}%"
-                                    plt.figtext(0.02, 0.02, change_text, fontsize=10, color='blue')
-                        
-                        plt.xticks(rotation=45)
-                        plt.tight_layout()
-                        st.pyplot(fig)
+                            ax.plot(range(len(time_series)), time_series.values, marker='o')
+                            ax.set_title(f"Messages By Time Period{' - ' + chart_data.get('category', '') if 'category' in chart_data else ''}")
+                            plt.tight_layout()
+                            st.pyplot(fig)
 
-        # ADD MULTI-CATEGORY STATS - Add this section after the time charts
+        # ADD MULTI-CATEGORY STATS
         # Only add if there's multi-category data
         if 'multi_category' in response['data'] and response['data']['multi_category']:
             st.subheader("Multi-Category Analysis")
@@ -120,36 +140,49 @@ if query and chatbot:
             # Create metrics
             st.markdown(f"**Messages span across {total_categories} categories**")
             
+            # Calculate total categorized messages
+            total_categorized = sum(result['count'] for result in multi_cat_results)
+            
+            # Calculate overlap percentage if more messages are categorized than total
+            if total_categorized > total_messages:
+                overlap_count = total_categorized - total_messages
+                overlap_percent = (overlap_count / total_messages) * 100
+                st.info(f"**Category overlap detected:** {overlap_percent:.1f}% of messages could fit in multiple categories ({overlap_count} overlapping categorizations)")
+            
             # Show category distribution
-            category_counts = [(result['category_name'], result['count'], 
-                               (result['count']/total_messages)*100) 
-                              for result in multi_cat_results]
+            st.markdown("### Category Distribution")
+            
+            # Create a simple horizontal bar chart with percentages
+            fig, ax = plt.subplots(figsize=(10, max(3, len(multi_cat_results) * 0.4)))
+            
+            # Extract data
+            categories = [result['category_name'] for result in multi_cat_results]
+            counts = [result['count'] for result in multi_cat_results]
+            percentages = [(count/total_messages)*100 for count in counts]
             
             # Sort by count
-            category_counts.sort(key=lambda x: x[1], reverse=True)
+            sorted_indices = sorted(range(len(counts)), key=lambda i: counts[i], reverse=True)
+            categories = [categories[i] for i in sorted_indices]
+            counts = [counts[i] for i in sorted_indices]
+            percentages = [percentages[i] for i in sorted_indices]
             
-            # Display as a simple table
-            st.markdown("### Category Distribution")
-            cols = st.columns(3)
-            cols[0].markdown("**Category**")
-            cols[1].markdown("**Count**")
-            cols[2].markdown("**Percentage**")
+            # Plot bars
+            y_pos = range(len(categories))
+            ax.barh(y_pos, percentages, align='center')
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels(categories)
+            ax.invert_yaxis()  # labels read top-to-bottom
+            ax.set_xlabel('Percentage of Messages')
+            ax.set_title('Category Distribution')
             
-            for cat_name, count, percent in category_counts:
-                cols[0].markdown(f"{cat_name}")
-                cols[1].markdown(f"{count}")
-                cols[2].markdown(f"{percent:.1f}%")
+            # Add percentage labels
+            for i, (pct, count) in enumerate(zip(percentages, counts)):
+                ax.text(pct + 1, i, f"{pct:.1f}% ({count})", va='center')
             
-            # Calculate category overlap percentage
-            if len(multi_cat_results) > 1:
-                # Calculate how many messages appear in multiple categories
-                total_categorized = sum(result['count'] for result in multi_cat_results)
-                overlap_estimate = total_categorized - total_messages
-                if overlap_estimate > 0:
-                    overlap_percent = (overlap_estimate / total_messages) * 100
-                    st.info(f"Approximately {overlap_percent:.1f}% of messages could fit in multiple categories")
+            plt.tight_layout()
+            st.pyplot(fig)
 
-        # Display category overlap information if available
+        # Keep the existing category overlap and other sections
         if 'category_overlap' in response['data'] and response['data']['category_overlap']:
             overlap = response['data']['category_overlap']
             
