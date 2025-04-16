@@ -104,39 +104,30 @@ The system processes user feedback messages based on the categorization system.
 
 The project is organized into three main notebooks:
 
-1. Data Preprocessing
-Loads and cleans the raw data
-Handles missing values
-Tokenizes messages
-Performs exploratory data analysis
+### 1. Data Preprocessing
+- Loads and cleans the raw data,
+- Handles missing values,
+- Tokenizes messages, 
+- Classify messages into actionable categories,
+- Performs exploratory data analysis.
 
-### Clean and preprocess text data
-Generate embeddings using BERT
-Classify messages into actionable categories
-Provide a conversational interface for analyzing the data
+### 2. Model Training
+- Generates BERT embeddings for messages,
+- Performs clustering to identify natural categories,
+- Trains a classification model,
+- Evaluates model performance.
 
-2. Model Training
-Generates BERT embeddings for messages
-Performs clustering to identify natural categories
-Trains a classification model
-Evaluates model performance
-
-### Clean and preprocess text data
-Generate embeddings using BERT
-Classify messages into actionable categories
-Provide a conversational interface for analyzing the data
-
-3. Chatbot Interface
-Implements a natural language interface
-Supports querying the dataset
-Maintains conversational context
-Provides statistical insights and visualizations
+### 3. Chatbot Interface
+- Implements a natural language interface,
+- Supports querying the dataset,
+- Maintains conversational context,
+- Provides statistical insights and visualizations.
 
 ### Features
-Message Classification: Automatically categorizes user messages into predefined categories
-Dynamic Filtering: Supports filtering by category, time range, and source
-Statistical Insights: Provides metrics like message counts, unique users, and trend detection
-Conversational Memory: Maintains context across multiple queries
+- Message Classification: Automatically categorizes user messages into predefined categories.
+- Dynamic Filtering: Supports filtering by category, time range, and source.
+- Statistical Insights: Provides metrics like message counts, unique users, and trend detection.
+- Conversational Memory: Maintains context across multiple queries.
 
 
 # Evaluation Questions
