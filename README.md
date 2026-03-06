@@ -1,9 +1,9 @@
 # LLM_DataScientist_ChatBot
-The project involves analyzing and classifying messages from a dataset using BERT and developing a chatbot with conversational memory to respond to natural language queries with meaningful insights.
+This project involves analyzing and classifying different types of messages from a dataset using BERT, and developing a chatbot with conversational memory to respond to natural language queries with meaningful insights.
 
 # Feedback Analysis Chatbot
 
-An intelligent chatbot for analyzing user feedback with temporal pattern detection and (multy)category classification.
+An intelligent chatbot for analyzing user feedback with temporal pattern detection and (multi)category classification.
 
 ## Features
 - Filter feedback by category, source, and time range
