@@ -29,6 +29,7 @@ The chatbot expects a CSV file with the following columns:
 ## User Feedback Analysis and Chatbot System
 This repository contains a system for analyzing user feedback messages from LiveChat and Telegram, classifying them into actionable categories, and providing a natural language chatbot interface for querying the data.
 
+'''
 ## Project Structure
 feedback-analysis-chatbot/
 │
@@ -48,7 +49,7 @@ feedback-analysis-chatbot/
 ├── app.py                       # Streamlit interface (simplified)
 ├── requirements.txt             # Project dependencies
 └── README.md                    # Project documentation
-
+'''
 
 # Setup Instructions of the repository
 
